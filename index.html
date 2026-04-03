@@ -10,7 +10,6 @@
     body {
       font-family: 'Open Sans', sans-serif;
       background: #e8eaf0;
-      min-width: 1280px;
       padding: 48px 40px;
       display: flex;
       flex-direction: column;
@@ -37,12 +36,18 @@
     ═══════════════════════════════════════════════ */
     .banner {
       width: 100%;
-      min-width: 1200px;
       min-height: 52px;
       display: grid;
       grid-template-columns: auto 1fr auto;
       align-items: stretch;
       padding: 0 32px;
+      overflow: hidden;
+    }
+
+    /* ── Accroche renforcée (SE sans CTA) ── */
+    .subtitle-large {
+      font-size: clamp(14px, 1.4vw, 18px) !important;
+      font-weight: 600;
     }
 
     /* ── COL 1 : Tag + Titre ── */
@@ -89,6 +94,7 @@
       align-items: center;
       padding: 0 20px;
       min-width: 0;
+      overflow: hidden;
       position: relative;
     }
     .col-message::before {
@@ -107,8 +113,6 @@
       font-size: clamp(12px, 1vw, 14px);
       line-height: 1.4;
       color: white;
-      overflow: hidden;
-      text-overflow: ellipsis;
       white-space: nowrap;
     }
 
@@ -116,6 +120,7 @@
     .col-action {
       display: flex;
       align-items: center;
+      justify-content: flex-end;
       gap: 24px;
       padding: 6px 0 6px 24px;
       flex-shrink: 0;
@@ -217,12 +222,11 @@
         tagLabel:     "New customer",
         tagBgColor:   "#ffffff",
         tagTextColor: "#044317",
-        ctaTextColor: "#044317",
+        showCta:      false,
+        subtitleLarge: true,
         title:        "Welcome!",
         subtitle:     "Place your order and get your toolbox for free",
         timerLabel:   "Offer valid",
-        ctaLabel:     "See products",
-        ctaUrl:       "#",
         targetDate:   "2026-05-15T23:59:59",
         bgColor:      "#24A148",
       },
@@ -286,7 +290,6 @@
           <div class="unit"><span class="unit-num" id="m-SE">00</span><span class="unit-lbl">Min</span></div>
         </div>
       </div>
-      <a class="cta" id="cta-SE" href="#"></a>
     </div>
   </div>
 
@@ -295,7 +298,6 @@
     function initBanner(market) {
       const c = CONFIGS[market];
       const banner = document.getElementById('banner-' + market);
-      const cta    = document.getElementById('cta-' + market);
 
       banner.style.background                                        = c.bgColor;
       document.getElementById('badge-' + market).style.background   = c.tagBgColor;
@@ -303,11 +305,18 @@
       document.getElementById('tagLabel-' + market).textContent     = c.tagLabel;
       document.getElementById('tagLabel-' + market).style.color     = c.tagTextColor;
       document.getElementById('title-' + market).textContent        = c.title;
-      document.getElementById('subtitle-' + market).textContent     = c.subtitle;
       document.getElementById('timerLabel-' + market).textContent   = c.timerLabel;
-      cta.textContent = c.ctaLabel;
-      cta.style.color = c.ctaTextColor;
-      cta.href        = c.ctaUrl;
+
+      const subtitleEl = document.getElementById('subtitle-' + market);
+      subtitleEl.textContent = c.subtitle;
+      if (c.subtitleLarge) subtitleEl.classList.add('subtitle-large');
+
+      const ctaEl = document.getElementById('cta-' + market);
+      if (ctaEl && c.showCta !== false) {
+        ctaEl.textContent = c.ctaLabel;
+        ctaEl.style.color = c.ctaTextColor;
+        ctaEl.href        = c.ctaUrl;
+      }
     }
 
     /* ── Compte à rebours — met à jour tous les marchés ── */
@@ -324,6 +333,35 @@
     Object.keys(CONFIGS).forEach(initBanner);
     tick();
     setInterval(tick, 1000);
+
+    /* ── Responsive — détection de dépassement via scrollWidth ── */
+    function checkOverflows(banner) {
+      const colMsg  = banner.querySelector('.col-message');
+      const subtitle = banner.querySelector('.subtitle');
+      const ctaEl   = banner.querySelector('.cta');
+
+      /* Étape 1 — remettre tout visible pour mesurer l'état naturel */
+      if (colMsg) colMsg.style.display = 'flex';
+      if (ctaEl)  ctaEl.style.display  = 'flex';
+
+      /* Étape 2 — l'accroche déborde de sa colonne → masquer col-message
+         Le buffer de 40px déclenche le masquage avant que les derniers caractères soient tronqués */
+      if (colMsg && subtitle) {
+        const subtitleClipped = subtitle.scrollWidth + 40 > colMsg.clientWidth;
+        if (subtitleClipped) colMsg.style.display = 'none';
+      }
+
+      /* Étape 3 — le banner déborde (col-1 + col-3 > bannière) → masquer le CTA */
+      if (ctaEl) {
+        const bannerOverflows = banner.scrollWidth > banner.clientWidth + 1;
+        if (bannerOverflows) ctaEl.style.display = 'none';
+      }
+    }
+
+    document.querySelectorAll('.banner').forEach(banner => {
+      const ro = new ResizeObserver(() => checkOverflows(banner));
+      ro.observe(banner);
+    });
   </script>
 
 </body>
